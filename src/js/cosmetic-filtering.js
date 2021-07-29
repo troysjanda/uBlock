@@ -23,11 +23,16 @@
 
 /******************************************************************************/
 
-µBlock.cosmeticFilteringEngine = (( ) => {
+import logger from './logger.js';
+import µb from './background.js';
+
+import {
+    StaticExtFilteringHostnameDB,
+    StaticExtFilteringSessionDB,
+} from './static-ext-filtering-db.js';
 
 /******************************************************************************/
 
-const µb = µBlock;
 const cosmeticSurveyingMissCountMax =
     parseInt(vAPI.localStorage.getItem('cosmeticSurveyingMissCountMax'), 10) ||
     15;
@@ -199,10 +204,10 @@ const FilterContainer = function() {
     this.selectorCacheTimer = null;
 
     // specific filters
-    this.specificFilters = new µb.staticExtFilteringEngine.HostnameBasedDB(2);
+    this.specificFilters = new StaticExtFilteringHostnameDB(2);
 
     // temporary filters
-    this.sessionFilterDB = new µb.staticExtFilteringEngine.SessionDB();
+    this.sessionFilterDB = new StaticExtFilteringSessionDB();
 
     // low generic cosmetic filters, organized by id/class then simple/complex.
     this.lowlyGeneric = Object.create(null);
@@ -253,7 +258,6 @@ const FilterContainer = function() {
 // Reset all, thus reducing to a minimum memory footprint of the context.
 
 FilterContainer.prototype.reset = function() {
-    this.µburi = µb.URI;
     this.frozen = false;
     this.acceptedCount = 0;
     this.discardedCount = 0;
@@ -384,8 +388,8 @@ FilterContainer.prototype.compileGenericHideSelector = function(
 ) {
     const { raw, compiled, pseudoclass } = parser.result;
     if ( compiled === undefined ) {
-        const who = writer.properties.get('assetKey') || '?';
-        µb.logger.writeOne({
+        const who = writer.properties.get('name') || '?';
+        logger.writeOne({
             realm: 'message',
             type: 'error',
             text: `Invalid generic cosmetic filter in ${who}: ${raw}`
@@ -431,8 +435,8 @@ FilterContainer.prototype.compileGenericHideSelector = function(
         if ( µb.hiddenSettings.allowGenericProceduralFilters === true ) {
             return this.compileSpecificSelector(parser, '', false, writer);
         }
-        const who = writer.properties.get('assetKey') || '?';
-        µb.logger.writeOne({
+        const who = writer.properties.get('name') || '?';
+        logger.writeOne({
             realm: 'message',
             type: 'error',
             text: `Invalid generic cosmetic filter in ${who}: ##${raw}`
@@ -487,8 +491,8 @@ FilterContainer.prototype.compileGenericUnhideSelector = function(
     // Procedural cosmetic filters are acceptable as generic exception filters.
     const { raw, compiled } = parser.result;
     if ( compiled === undefined ) {
-        const who = writer.properties.get('assetKey') || '?';
-        µb.logger.writeOne({
+        const who = writer.properties.get('name') || '?';
+        logger.writeOne({
             realm: 'message',
             type: 'error',
             text: `Invalid cosmetic filter in ${who}: #@#${raw}`
@@ -517,8 +521,8 @@ FilterContainer.prototype.compileSpecificSelector = function(
 ) {
     const { raw, compiled, exception } = parser.result;
     if ( compiled === undefined ) {
-        const who = writer.properties.get('assetKey') || '?';
-        µb.logger.writeOne({
+        const who = writer.properties.get('name') || '?';
+        logger.writeOne({
             realm: 'message',
             type: 'error',
             text: `Invalid cosmetic filter in ${who}: ##${raw}`
@@ -1127,47 +1131,8 @@ FilterContainer.prototype.getFilterCount = function() {
 
 /******************************************************************************/
 
-FilterContainer.prototype.benchmark = async function() {
-    const requests = await µb.loadBenchmarkDataset();
-    if ( Array.isArray(requests) === false || requests.length === 0 ) {
-        console.info('No requests found to benchmark');
-        return;
-    }
-    console.info('Benchmarking cosmeticFilteringEngine.retrieveSpecificSelectors()...');
-    const details = {
-        tabId: undefined,
-        frameId: undefined,
-        hostname: '',
-        domain: '',
-        entity: '',
-    };
-    const options = {
-        noSpecificCosmeticFiltering: false,
-        noGenericCosmeticFiltering: false,
-    };
-    let count = 0;
-    const t0 = self.performance.now();
-    for ( let i = 0; i < requests.length; i++ ) {
-        const request = requests[i];
-        if ( request.cpt !== 'main_frame' ) { continue; }
-        count += 1;
-        details.hostname = µb.URI.hostnameFromURI(request.url);
-        details.domain = µb.URI.domainFromHostname(details.hostname);
-        details.entity = µb.URI.entityFromDomain(details.domain);
-        void this.retrieveSpecificSelectors(details, options);
-    }
-    const t1 = self.performance.now();
-    const dur = t1 - t0;
-    console.info(`Evaluated ${count} requests in ${dur.toFixed(0)} ms`);
-    console.info(`\tAverage: ${(dur / count).toFixed(3)} ms per request`);
-};
+const cosmeticFilteringEngine = new FilterContainer();
 
-/******************************************************************************/
-
-return new FilterContainer();
-
-/******************************************************************************/
-
-})();
+export default cosmeticFilteringEngine;
 
 /******************************************************************************/
