@@ -80,11 +80,37 @@ function applyList(name, raw) {
     snfe.fromCompiled(reader);
 }
 
-function enableWASM(path) {
-    return Promise.all([
-        globals.publicSuffixList.enableWASM(`${path}/lib/publicsuffixlist`),
-        snfe.enableWASM(`${path}/js`),
-    ]);
+async function enableWASM() {
+    const wasmModuleFetcher = function(path) {
+        return new Promise((resolve, reject) => {
+            const require = createRequire(import.meta.url); // jshint ignore:line
+            const fs = require('fs');
+            fs.readFile(`${path}.wasm`, null, (err, data) => {
+                if ( err ) { return reject(err); }
+                return globals.WebAssembly.compile(data).then(module => {
+                    resolve(module);
+                }).catch(reason => {
+                    reject(reason);
+                });
+            });
+        });
+    };
+    try {
+        const results = await Promise.all([
+            globals.publicSuffixList.enableWASM(
+                wasmModuleFetcher,
+                './lib/publicsuffixlist/wasm/'
+            ),
+            snfe.enableWASM(
+                wasmModuleFetcher,
+                './js/wasm/'
+            ),
+        ]);
+        return results.every(a => a === true);
+    } catch(reason) {
+        console.info(reason);
+    }
+    return false;
 }
 
 function pslInit(raw) {
@@ -97,6 +123,7 @@ function pslInit(raw) {
         }
     }
     globals.publicSuffixList.parse(raw, globals.punycode.toASCII);
+    return globals.publicSuffixList;
 }
 
 function restart(lists, options = {}) {
