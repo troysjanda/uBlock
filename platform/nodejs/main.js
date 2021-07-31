@@ -31,7 +31,7 @@ import './lib/publicsuffixlist/publicsuffixlist.js';
 import globals from './js/globals.js';
 import snfe from './js/static-net-filtering.js';
 import { FilteringContext } from './js/filtering-context.js';
-import { LineIterator } from './js/text-iterators.js';
+import { LineIterator } from './js/text-utils.js';
 import { StaticFilteringParser } from './js/static-filtering-parser.js';
 
 import {
@@ -82,33 +82,18 @@ function applyList(name, raw) {
 
 async function enableWASM() {
     const wasmModuleFetcher = function(path) {
-        return new Promise((resolve, reject) => {
-            const require = createRequire(import.meta.url); // jshint ignore:line
-            const fs = require('fs');
-            fs.readFile(`${path}.wasm`, null, (err, data) => {
-                if ( err ) { return reject(err); }
-                return globals.WebAssembly.compile(data).then(module => {
-                    resolve(module);
-                }).catch(reason => {
-                    reject(reason);
-                });
-            });
-        });
+        const require = createRequire(import.meta.url); // jshint ignore:line
+        const wasm = new Uint8Array(require(`${path}.wasm.json`));
+        return globals.WebAssembly.compile(wasm);
     };
     try {
         const results = await Promise.all([
-            globals.publicSuffixList.enableWASM(
-                wasmModuleFetcher,
-                './lib/publicsuffixlist/wasm/'
-            ),
-            snfe.enableWASM(
-                wasmModuleFetcher,
-                './js/wasm/'
-            ),
+            globals.publicSuffixList.enableWASM(wasmModuleFetcher, './lib/publicsuffixlist/wasm/'),
+            snfe.enableWASM(wasmModuleFetcher, './js/wasm/'),
         ]);
         return results.every(a => a === true);
     } catch(reason) {
-        console.info(reason);
+        console.log(reason);
     }
     return false;
 }

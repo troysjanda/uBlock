@@ -2,6 +2,8 @@
 #
 # This script assumes a linux environment
 
+set -e
+
 DES=dist/build/uBlock0.browser
 
 mkdir -p $DES/js
@@ -13,7 +15,7 @@ cp src/js/hntrie.js                  $DES/js
 cp src/js/static-filtering-parser.js $DES/js
 cp src/js/static-net-filtering.js    $DES/js
 cp src/js/static-filtering-io.js     $DES/js
-cp src/js/text-iterators.js          $DES/js
+cp src/js/text-utils.js              $DES/js
 cp src/js/uri-utils.js               $DES/js
 
 mkdir -p $DES/js/wasm
