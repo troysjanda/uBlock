@@ -6,17 +6,22 @@ set -e
 
 DES=dist/build/uBlock0.nodejs
 
+rm -rf $DES
+
 mkdir -p $DES/js
 cp src/js/base64-custom.js           $DES/js
 cp src/js/biditrie.js                $DES/js
+cp src/js/dynamic-net-filtering.js   $DES/js
 cp src/js/filtering-context.js       $DES/js
 cp src/js/globals.js                 $DES/js
+cp src/js/hnswitches.js              $DES/js
 cp src/js/hntrie.js                  $DES/js
 cp src/js/static-filtering-parser.js $DES/js
 cp src/js/static-net-filtering.js    $DES/js
 cp src/js/static-filtering-io.js     $DES/js
 cp src/js/text-utils.js              $DES/js
 cp src/js/uri-utils.js               $DES/js
+cp src/js/url-net-filtering.js       $DES/js
 
 mkdir -p $DES/lib
 cp -R src/lib/punycode.js      $DES/lib/
@@ -47,12 +52,14 @@ node -pe "JSON.stringify(fs.readFileSync('$THIRDPARTY/easylist.txt', 'utf8'))" \
 node -pe "JSON.stringify(fs.readFileSync('$THIRDPARTY/easyprivacy.txt', 'utf8'))" \
     > $DES/data/easyprivacy.json
 
-rm -rf $DES/build
-mkdir -p $DES/build
-
 cp platform/nodejs/*.js   $DES/
 cp platform/nodejs/*.json $DES/
 cp LICENSE.txt            $DES/
+
+# Ignore eslint when building with GitHub Actions
+if [ -z "$GITHUB_REF" ]; then
+    eslint -c platform/nodejs/eslintrc.json $DES/js $DES/*.js
+fi
 
 if [ "$1" = all ]; then
     echo "*** uBlock0.nodejs: Creating plain package..."

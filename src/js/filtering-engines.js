@@ -19,37 +19,32 @@
     Home: https://github.com/gorhill/uBlock
 */
 
-/* globals self */
-
 'use strict';
 
 /******************************************************************************/
 
-// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/globalThis
-
-const globals = (( ) => {
-    // jshint ignore:start
-    if ( typeof globalThis !== 'undefined' ) { return globalThis; }
-    if ( typeof self !== 'undefined' ) { return self; }
-    if ( typeof global !== 'undefined' ) { return global; }
-    // jshint ignore:end
-})();
-
-// https://en.wikipedia.org/wiki/.invalid
-if ( globals.location === undefined ) {
-    globals.location = new URL('https://ublock0.invalid/');
-}
-
-// https://developer.mozilla.org/en-US/docs/Web/API/Window/requestIdleCallback
-if ( globals.requestIdleCallback === undefined ) {
-    globals.requestIdleCallback = function(callback) {
-        return globals.setTimeout(callback, 1);
-    };
-    globals.cancelIdleCallback = function(handle) {
-        return globals.clearTimeout(handle);
-    };
-}
+import DynamicHostRuleFiltering from './dynamic-net-filtering.js';
+import DynamicSwitchRuleFiltering from './hnswitches.js';
+import DynamicURLRuleFiltering from './url-net-filtering.js';
 
 /******************************************************************************/
 
-export default globals;
+const permanentFirewall = new DynamicHostRuleFiltering();
+const sessionFirewall = new DynamicHostRuleFiltering();
+
+const permanentURLFiltering = new DynamicURLRuleFiltering();
+const sessionURLFiltering = new DynamicURLRuleFiltering();
+
+const permanentSwitches = new DynamicSwitchRuleFiltering();
+const sessionSwitches = new DynamicSwitchRuleFiltering();
+
+/******************************************************************************/
+
+export {
+    permanentFirewall,
+    sessionFirewall,
+    permanentURLFiltering,
+    sessionURLFiltering,
+    permanentSwitches,
+    sessionSwitches,
+};
