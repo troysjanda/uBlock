@@ -33,6 +33,8 @@ import {
     StaticNetFilteringEngine,
 } from './index.js';
 
+import HNTrieContainer from './js/hntrie.js';
+
 /******************************************************************************/
 
 function fetch(listName) {
@@ -42,23 +44,7 @@ function fetch(listName) {
     });
 }
 
-async function main() {
-    try {
-        const result = await enableWASM();
-        if ( result !== true ) {
-            console.log('Failed to enable all WASM code paths');
-        }
-    } catch(ex) {
-        console.log(ex);
-    }
-
-    const engine = await StaticNetFilteringEngine.create();
-
-    await engine.useLists([
-        fetch('easylist').then(raw => ({ name: 'easylist', raw })),
-        fetch('easyprivacy').then(raw => ({ name: 'easyprivacy', raw })),
-    ]);
-
+function testSNFE(engine) {
     let result = 0;
 
     // Tests
@@ -91,6 +77,67 @@ async function main() {
     if ( result !== 0 ) {
         console.log(engine.toLogData());
     }
+}
+
+async function doSNFE() {
+    const engine = await StaticNetFilteringEngine.create();
+
+    await engine.useLists([
+        fetch('easylist').then(raw => ({ name: 'easylist', raw })),
+        fetch('easyprivacy').then(raw => ({ name: 'easyprivacy', raw })),
+    ]);
+
+    testSNFE(engine);
+
+    const serialized = await engine.serialize();
+    engine.useLists([]);
+
+    testSNFE(engine);
+
+    await engine.deserialize(serialized);
+
+    testSNFE(engine);
+}
+
+async function doHNTrie() {
+    const trieContainer = new HNTrieContainer();
+
+    const aTrie = trieContainer.createOne();
+    aTrie.add('example.org');
+    aTrie.add('example.com');
+
+    const anotherTrie = trieContainer.createOne();
+    anotherTrie.add('foo.invalid');
+    anotherTrie.add('bar.invalid');
+
+    // matches() return the position at which the match starts, or -1 when
+    // there is no match.
+
+    // Matches: return 4
+    console.log("aTrie.matches('www.example.org')", aTrie.matches('www.example.org'));
+
+    // Does not match: return -1
+    console.log("aTrie.matches('www.foo.invalid')", aTrie.matches('www.foo.invalid'));
+
+    // Does not match: return -1
+    console.log("anotherTrie.matches('www.example.org')", anotherTrie.matches('www.example.org'));
+
+    // Matches: return 0
+    console.log("anotherTrie.matches('foo.invalid')", anotherTrie.matches('foo.invalid'));
+}
+
+async function main() {
+    try {
+        const result = await enableWASM();
+        if ( result !== true ) {
+            console.log('Failed to enable all WASM code paths');
+        }
+    } catch(ex) {
+        console.log(ex);
+    }
+
+    await doSNFE();
+    await doHNTrie();
 
     process.exit();
 }

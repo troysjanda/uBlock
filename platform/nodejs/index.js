@@ -85,8 +85,8 @@ function pslInit(raw) {
         // Use loadJSON() because require() would keep the string in memory.
         serialized = loadJSON('build/publicsuffixlist.json');
     } catch (error) {
-        if ( process.env.npm_lifecycle_event !== 'install' ) {
-            // This should never happen except during package installation.
+        if ( process.env.npm_lifecycle_event !== 'build' ) {
+            // This should never happen except during package building.
             console.error(error);
         }
     }
@@ -101,6 +101,7 @@ function pslInit(raw) {
         console.error('Unable to populate public suffix list');
         return;
     }
+    globals.publicSuffixList.parse(raw, globals.punycode.toASCII);
     return globals.publicSuffixList;
 }
 
@@ -182,6 +183,25 @@ async function useLists(lists, options = {}) {
 
 /******************************************************************************/
 
+class MockStorage {
+    constructor(serialized) {
+        this.map = new Map(serialized);
+    }
+
+    async put(assetKey, content) {
+        this.map.set(assetKey, content);
+        return ({ assetKey, content });
+    }
+
+    async get(assetKey) {
+        return ({ assetKey, content: this.map.get(assetKey) });
+    }
+
+    *[Symbol.iterator]() {
+        yield* this.map;
+    }
+}
+
 const fctx = new FilteringContext();
 let snfeInstance = null;
 
@@ -194,7 +214,7 @@ class StaticNetFilteringEngine {
     }
 
     async useLists(lists) {
-        return useLists(lists);
+        await useLists(lists);
     }
 
     matchRequest(details) {
@@ -213,7 +233,18 @@ class StaticNetFilteringEngine {
         return compileList(...args);
     }
 
-    static async create({ noPSL } = {}) {
+    async serialize() {
+        const storage = new MockStorage();
+        await snfe.toSelfie(storage, 'path');
+        return JSON.stringify([...storage]);
+    }
+
+    async deserialize(serialized) {
+        const storage = new MockStorage(JSON.parse(serialized));
+        await snfe.fromSelfie(storage, 'path');
+    }
+
+    static async create({ noPSL = false } = {}) {
         const instance = new StaticNetFilteringEngine();
 
         if ( noPSL !== true && !pslInit() ) {

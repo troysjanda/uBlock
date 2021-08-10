@@ -1,11 +1,11 @@
 {
   "name": "@gorhill/ubo-core",
-  "version": "0.1.6",
+  "version": "0.1.8",
   "description": "To create a working instance of uBlock Origin's static network filtering engine",
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "install": "node install.js",
+    "build": "node build.js",
     "test": "node test.js"
   },
   "repository": {
@@ -15,7 +15,8 @@
   "keywords": [
     "uBlock",
     "uBO",
-    "adblock"
+    "adblock",
+    "trie"
   ],
   "author": "Raymond Hill",
   "license": "GPL-3.0-or-later",
