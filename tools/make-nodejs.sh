@@ -52,10 +52,13 @@ node -pe "JSON.stringify(fs.readFileSync('$THIRDPARTY/easylist.txt', 'utf8'))" \
 node -pe "JSON.stringify(fs.readFileSync('$THIRDPARTY/easyprivacy.txt', 'utf8'))" \
     > $DES/data/easyprivacy.json
 
+cp platform/nodejs/.npmrc    $DES/
+cp platform/nodejs/.*.json   $DES/
 cp platform/nodejs/*.js      $DES/
 cp platform/nodejs/*.json    $DES/
 cp platform/nodejs/README.md $DES/
 cp LICENSE.txt               $DES/
+cp -R platform/nodejs/tests  $DES/
 
 cd $DES
 npm run build
