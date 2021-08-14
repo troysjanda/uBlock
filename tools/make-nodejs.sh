@@ -6,6 +6,15 @@ set -e
 
 DES=dist/build/uBlock0.nodejs
 
+TMPDIR=tmp
+mkdir -p $TMPDIR
+
+# Save existing npm dependencies if present so that we do not have to fetch
+# them all again
+if [ -d "$DES/node_modules" ]; then
+    mv "$DES/node_modules" "$TMPDIR/node_modules"
+fi
+
 rm -rf $DES
 
 mkdir -p $DES/js
@@ -52,7 +61,6 @@ node -pe "JSON.stringify(fs.readFileSync('$THIRDPARTY/easylist.txt', 'utf8'))" \
 node -pe "JSON.stringify(fs.readFileSync('$THIRDPARTY/easyprivacy.txt', 'utf8'))" \
     > $DES/data/easyprivacy.json
 
-cp platform/nodejs/.npmrc    $DES/
 cp platform/nodejs/.*.json   $DES/
 cp platform/nodejs/*.js      $DES/
 cp platform/nodejs/*.json    $DES/
@@ -71,5 +79,10 @@ else
     mv $tarballname ../uBlock0.nodejs.tgz
 fi
 cd -
+
+# Restore saved npm dependencies
+if [ -d "$TMPDIR/node_modules" ]; then
+    mv "$TMPDIR/node_modules" "$DES/node_modules"
+fi
 
 echo "*** uBlock0.nodejs: Package done."

@@ -24,83 +24,72 @@
 /******************************************************************************/
 
 import { strict as assert } from 'assert';
-import { createRequire } from 'module';
 
 import {
-    enableWASM,
     StaticNetFilteringEngine,
 } from '../index.js';
 
 let engine = null;
 
 describe('SNFE', () => {
-    function fetch(listName) {
-        return new Promise(resolve => {
-            const require = createRequire(import.meta.url); // jshint ignore:line
-            resolve(require(`../data/${listName}.json`));
-        });
-    }
-
-    function testSNFE(engine) {
-        let result = 0;
-
-        // Tests
-        // Not blocked
-        result = engine.matchRequest({
-          originURL: 'https://www.bloomberg.com/',
-          url: 'https://www.bloomberg.com/tophat/assets/v2.6.1/that.css',
-          type: 'stylesheet'
-        });
-        if ( result !== 0 ) {
-            engine.toLogData();
-        }
-
-        // Blocked
-        result = engine.matchRequest({
-          originURL: 'https://www.bloomberg.com/',
-          url: 'https://securepubads.g.doubleclick.net/tag/js/gpt.js',
-          type: 'script'
-        });
-        if ( result !== 0 ) {
-            engine.toLogData();
-        }
-
-        // Unblocked
-        result = engine.matchRequest({
-          originURL: 'https://www.bloomberg.com/',
-          url: 'https://sourcepointcmp.bloomberg.com/ccpa.js',
-          type: 'script'
-        });
-        if ( result !== 0 ) {
-            engine.toLogData();
-        }
-    }
-
-    beforeEach(async () => {
+    before(async () => {
         engine = await StaticNetFilteringEngine.create();
-
-        await engine.useLists([
-            fetch('easylist').then(raw => ({ name: 'easylist', raw })),
-            fetch('easyprivacy').then(raw => ({ name: 'easyprivacy', raw })),
-        ]);
     });
 
-    describe('Basic', async () => {
-        it ('should work', async () => {
-            testSNFE(engine);
+    describe('Filter loading', () => {
+        beforeEach(async () => {
+            // This is in lieu of a constructor for a non-singleton.
+            await engine.useLists([]);
+        });
 
-            const serialized = await engine.serialize();
-            engine.useLists([]);
+        it('should not reject on no lists', async () => {
+            await engine.useLists([]);
+        });
 
-            assert.notDeepEqual(await engine.serialize(), serialized);
+        it('should not reject on one empty list', async () => {
+            await engine.useLists([
+                { name: 'easylist', raw: '' },
+            ]);
+        });
 
-            testSNFE(engine);
+        it('should not reject on one list containing one filter', async () => {
+            await engine.useLists([
+                { name: 'easylist', raw: '/foo^' },
+            ]);
+        });
 
-            await engine.deserialize(serialized);
+        it('should not reject on one list containing multiple filters', async () => {
+            await engine.useLists([
+                { name: 'easylist', raw: '/foo^\n||example.com^' },
+            ]);
+        });
 
-            assert.deepEqual(await engine.serialize(), serialized);
+        it('should not reject on multiple lists containing multiple filters', async () => {
+            await engine.useLists([
+                { name: 'easylist', raw: '/foo^\n||example.com^' },
+                { name: 'easyprivacy', raw: '||example.net/bar/\n^bar.js?' },
+            ]);
+        });
 
-            testSNFE(engine);
+        it('should not reject on promised-based lists', async () => {
+            await engine.useLists([
+                Promise.resolve({ name: 'easylist', raw: '/foo^\n||example.com^' }),
+                Promise.resolve({ name: 'easyprivacy', raw: '||example.net/bar/\n^bar.js?' }),
+            ]);
+        });
+
+        it('should reject on promised-based lists in which a promise is rejected', async () => {
+            await assert.rejects(engine.useLists([
+                Promise.reject({ name: 'easylist', raw: '/foo^\n||example.com^' }),
+                Promise.resolve({ name: 'easyprivacy', raw: '||example.net/bar/\n^bar.js?' }),
+            ]));
+        });
+
+        it('should reject on promised-based lists in which all promises are rejected', async () => {
+            await assert.rejects(engine.useLists([
+                Promise.reject({ name: 'easylist', raw: '/foo^\n||example.com^' }),
+                Promise.reject({ name: 'easyprivacy', raw: '||example.net/bar/\n^bar.js?' }),
+            ]));
         });
     });
 });
