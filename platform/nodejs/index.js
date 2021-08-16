@@ -95,8 +95,10 @@ function pslInit(raw) {
         return globals.publicSuffixList;
     }
 
-    const require = createRequire(import.meta.url); // jshint ignore:line
-    raw = require('./data/effective_tld_names.json');
+    raw = readFileSync(
+        resolve(__dirname, './assets/thirdparties/publicsuffix.org/list/effective_tld_names.dat'),
+        'utf8'
+    );
     if ( typeof raw !== 'string' || raw.trim() === '' ) {
         console.error('Unable to populate public suffix list');
         return;
@@ -148,7 +150,7 @@ async function useLists(lists, options = {}) {
     snfe.reset();
 
     if ( Array.isArray(lists) === false || lists.length === 0 ) {
-        return snfe;
+        return;
     }
 
     let compiler = null;
@@ -177,8 +179,6 @@ async function useLists(lists, options = {}) {
     // Commit changes
     snfe.freeze();
     snfe.optimize();
-
-    return snfe;
 }
 
 /******************************************************************************/
@@ -203,14 +203,14 @@ class MockStorage {
 }
 
 const fctx = new FilteringContext();
-let snfeInstance = null;
+let snfeProxyInstance = null;
 
 class StaticNetFilteringEngine {
     constructor() {
-        if ( snfeInstance !== null ) {
+        if ( snfeProxyInstance !== null ) {
             throw new Error('Only a single instance is supported.');
         }
-        snfeInstance = this;
+        snfeProxyInstance = this;
     }
 
     async useLists(lists) {
@@ -252,6 +252,12 @@ class StaticNetFilteringEngine {
         }
 
         return instance;
+    }
+
+    static async release() {
+        if ( snfeProxyInstance === null ) { return; }
+        snfeProxyInstance = null;
+        await useLists([]);
     }
 }
 
