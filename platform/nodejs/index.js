@@ -146,6 +146,10 @@ function compileList({ name, raw }, compiler, writer, options = {}) {
 /******************************************************************************/
 
 async function useLists(lists, options = {}) {
+    if ( useLists.promise !== null ) {
+        throw new Error('Pending useLists() operation');
+    }
+
     // Remove all filters
     snfe.reset();
 
@@ -174,12 +178,16 @@ async function useLists(lists, options = {}) {
         promises.push(promise.then(list => consumeList(list)));
     }
 
-    await Promise.all(promises);
+    useLists.promise = Promise.all(promises);
+    await useLists.promise;
+    useLists.promise = null;
 
     // Commit changes
     snfe.freeze();
     snfe.optimize();
 }
+
+useLists.promise = null;
 
 /******************************************************************************/
 
@@ -223,6 +231,10 @@ class StaticNetFilteringEngine {
 
     matchAndFetchModifiers(details, modifier) {
         return snfe.matchAndFetchModifiers(fctx.fromDetails(details), modifier);
+    }
+
+    hasQuery(details) {
+        return snfe.hasQuery(details);
     }
 
     toLogData() {
