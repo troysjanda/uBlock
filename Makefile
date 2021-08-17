@@ -2,7 +2,7 @@
 run_options := $(filter-out $@,$(MAKECMDGOALS))
 
 .PHONY: all clean test lint chromium firefox npm dig \
-	compare maxcost mincost record wasm
+	compare maxcost mincost modifiers record wasm
 
 sources := $(wildcard src/* src/*/* src/*/*/* src/*/*/*/*)
 platform := $(wildcard platform/* platform/*/*)
@@ -32,10 +32,13 @@ dist/build/uBlock0.npm: tools/make-nodejs.sh $(sources) $(platform) $(assets)
 npm: dist/build/uBlock0.npm
 
 lint: npm
-	cd dist/build/uBlock0.npm && npm install && npm run lint
+	cd dist/build/uBlock0.npm && npm run lint
 
 test: npm
-	cd dist/build/uBlock0.npm && npm install && npm run test
+	cd dist/build/uBlock0.npm && npm run test
+
+test-full-battery: npm
+	cd dist/build/uBlock0.npm && npm run test-full-battery
 
 dist/build/uBlock0.dig: tools/make-nodejs.sh $(sources) $(platform) $(assets)
 	tools/make-dig.sh
@@ -60,6 +63,8 @@ compare:
 maxcost:
 	@echo
 mincost:
+	@echo
+modifiers:
 	@echo
 record:
 	@echo

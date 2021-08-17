@@ -297,6 +297,9 @@ class LogData {
             isRegex: false,
         };
         filterUnits[iunit].logData(logData);
+        if ( (categoryBits & Important) !== 0 ) {
+            logData.options.unshift('important');
+        }
         if ( (categoryBits & ThirdParty) !== 0 ) {
             logData.options.unshift('3p');
         } else if ( (categoryBits & FirstParty) !== 0 ) {
@@ -3431,11 +3434,6 @@ class FilterCompiler {
             units.push(FilterAnchorRight.compile());
         }
 
-        // Important
-        if ( (this.action & Important) !== 0 ) {
-            units.push(FilterImportant.compile());
-        }
-
         // Strict partiness
         if ( this.strictParty !== 0 ) {
             units.push(FilterStrictParty.compile(this));
@@ -3469,11 +3467,12 @@ class FilterCompiler {
             this.action = (this.action & ~ActionBitsMask) | ModifyAction;
         }
 
-        const fdata = units.length === 1
-            ? units[0]
-            : FilterCompositeAll.compile(units);
-
-        this.compileToAtomicFilter(fdata, writer);
+        this.compileToAtomicFilter(
+            units.length === 1
+                ? units[0]
+                : FilterCompositeAll.compile(units),
+            writer
+        );
 
         // Add block-important filters to the block realm, so as to avoid
         // to unconditionally match against the block-important realm for
@@ -3481,9 +3480,13 @@ class FilterCompiler {
         // the block-important realm should be checked when and only when
         // there is a matched exception filter, which important filters are
         // meant to override.
-        if ( (this.action & BlockImportant) !== 0 ) {
+        if ( (this.action & ActionBitsMask) === BlockImportant ) {
             this.action &= ~Important;
-            this.compileToAtomicFilter(fdata, writer);
+            units.push(FilterImportant.compile());
+            this.compileToAtomicFilter(
+                FilterCompositeAll.compile(units),
+                writer
+            );
         }
     }
 
@@ -3537,6 +3540,9 @@ FilterCompiler.prototype.FILTER_UNSUPPORTED = 2;
 /******************************************************************************/
 
 const FilterContainer = function() {
+    this.compilerVersion = '1';
+    this.selfieVersion = '1';
+
     this.MAX_TOKEN_LENGTH = MAX_TOKEN_LENGTH;
     this.optimizeTimerId = undefined;
     // As long as CategoryCount is reasonably low, we will use an array to
@@ -3768,6 +3774,7 @@ FilterContainer.prototype.toSelfie = function(storage, path) {
         storage.put(
             `${path}/main`,
             JSON.stringify({
+                version: this.selfieVersion,
                 processedFilterCount: this.processedFilterCount,
                 acceptedCount: this.acceptedCount,
                 rejectedCount: this.rejectedCount,
@@ -3831,6 +3838,7 @@ FilterContainer.prototype.fromSelfie = function(storage, path) {
             } catch (ex) {
             }
             if ( selfie instanceof Object === false ) { return false; }
+            if ( selfie.version !== this.selfieVersion ) { return false; }
             this.processedFilterCount = selfie.processedFilterCount;
             this.acceptedCount = selfie.acceptedCount;
             this.rejectedCount = selfie.rejectedCount;
