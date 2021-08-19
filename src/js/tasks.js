@@ -19,22 +19,24 @@
     Home: https://github.com/gorhill/uBlock
 */
 
-/* globals self */
+/* globals requestIdleCallback, cancelIdleCallback */
 
 'use strict';
 
 /******************************************************************************/
 
-// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/globalThis
+export function queueTask(func) {
+    if ( typeof requestIdleCallback === 'undefined' ) {
+        return setTimeout(func, 1);
+    }
 
-const globals = (( ) => {
-    // jshint ignore:start
-    if ( typeof globalThis !== 'undefined' ) { return globalThis; }
-    if ( typeof self !== 'undefined' ) { return self; }
-    if ( typeof global !== 'undefined' ) { return global; }
-    // jshint ignore:end
-})();
+    return requestIdleCallback(func, { timeout: 5000 });
+}
 
-/******************************************************************************/
+export function dropTask(id) {
+    if ( typeof cancelIdleCallback === 'undefined' ) {
+        return clearTimeout(id);
+    }
 
-export default globals;
+    return cancelIdleCallback(id);
+}
