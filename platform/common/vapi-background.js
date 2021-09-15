@@ -122,6 +122,9 @@ vAPI.browserSettings = (( ) => {
     if ( bp instanceof Object === false ) { return; }
 
     return {
+        // https://github.com/uBlockOrigin/uBlock-issues/issues/1723#issuecomment-919913361
+        canLeakLocalIPAddresses: vAPI.webextFlavor.soup.has('mobile'),
+
         set: function(details) {
             for ( const setting in details ) {
                 if ( details.hasOwnProperty(setting) === false ) { continue; }
@@ -152,6 +155,20 @@ vAPI.browserSettings = (( ) => {
                         bp.websites.hyperlinkAuditingEnabled.set({
                             value: false,
                             scope: 'regular',
+                        });
+                    }
+                    break;
+
+                case 'webrtcIPAddress':
+                    if ( this.canLeakLocalIPAddresses === false ) { return; }
+                    if ( !!details[setting] ) {
+                        bp.network.webRTCIPHandlingPolicy.clear({
+                            scope: 'regular',
+                        });
+                    } else {
+                        bp.network.webRTCIPHandlingPolicy.set({
+                            value: 'default_public_interface_only',
+                            scope: 'regular'
                         });
                     }
                     break;

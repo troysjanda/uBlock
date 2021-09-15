@@ -176,6 +176,7 @@ const onLocalDataReceived = function(details) {
     if ( details.privacySettingsSupported === false ) {
         uDom('[data-setting-name="prefetchingDisabled"]').attr('disabled', '');
         uDom('[data-setting-name="hyperlinkAuditingDisabled"]').attr('disabled', '');
+        uDom('[data-setting-name="webrtcIPAddressHidden"]').attr('disabled', '');
     }
 };
 
@@ -252,6 +253,12 @@ const onUserSettingsReceived = function(details) {
             changeUserSettings(name, checkbox.checked);
             synchronizeDOM();
         });
+    }
+
+    if ( details.canLeakLocalIPAddresses === true ) {
+        uDom('[data-setting-name="webrtcIPAddressHidden"]')
+            .ancestors('div.li')
+            .css('display', '');
     }
 
     uDom('[data-i18n="settingsNoLargeMediaPrompt"] > input[type="number"]')
